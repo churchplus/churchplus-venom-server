@@ -1,0 +1,8 @@
+node_modules
+chrome
+tokens
+googlechrome.dmg
+screenshot.png
+*.zip
+.env
+.vscode
