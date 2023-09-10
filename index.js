@@ -26,6 +26,12 @@ let qrCounter = 0;
 let scheduleMessagePayload = {}
 
 
+
+app.get('/', (req, res) => {
+    res.send('<h1>Node application</h1>');
+});
+
+
 const getWhatsappSession = (id, socket, reconnect) => {
 
     venom
