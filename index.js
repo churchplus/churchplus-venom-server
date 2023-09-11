@@ -48,8 +48,8 @@ const getWhatsappSession = (id, socket, reconnect) => {
                     message: 'Client got log out, but here is the qr'
                 })
                 console.log('Number of attempts to read the qrcode: ', attempts);
-                console.log('Terminal qrcode: ', asciiQR);
-                console.log('base64 image string qrcode: ', base64Qrimg);
+                // console.log('Terminal qrcode: ', asciiQR);
+                // console.log('base64 image string qrcode: ', base64Qrimg);
                 console.log('urlCode (data-ref): ', urlCode);
             },
             // statusFind
