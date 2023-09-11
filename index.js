@@ -4,9 +4,12 @@ const app = express();
 const port = process.env.PORT || 3001;
 const http = require("http");
 const server = http.createServer(app);
+const puppeteer = require('puppeteer')
+// console.log(puppeteer.executablePath(), 'path');
 const {
     Server
-} = require("socket.io")
+} = require("socket.io");
+const { executablePath } = require('./.puppeteerrc.cjs');
 const io = new Server(server, {
     cors: {
         origin: '*',
@@ -57,10 +60,10 @@ const getWhatsappSession = (id, socket, reconnect) => {
             },
             // options
             {
-                // browserPathExecutable: '/usr/bin/google-chrome', // browser executable path
+                browserPathExecutable: puppeteer.executablePath(), // browser executable path
                 // folderNameToken: 'tokens', //folder name when saving tokens
                 // mkdirFolderToken: '', //folder directory tokens, just inside the venom folder, example:  { mkdirFolderToken: '/node_modules', } //will save the tokens folder in the node_modules directory
-                // headless: 'new', // you should no longer use boolean false or true, now use false, true or 'new' learn more https://developer.chrome.com/articles/new-headless/
+                headless: 'new', // you should no longer use boolean false or true, now use false, true or 'new' learn more https://developer.chrome.com/articles/new-headless/
                 // devtools: false, // Open devtools by default
                 // debug: false, // Opens a debug session
                 // logQR: true, // Logs QR automatically in terminal
@@ -76,7 +79,7 @@ const getWhatsappSession = (id, socket, reconnect) => {
                 // addProxy: [''], // Add proxy server exemple : [e1.p.webshare.io:01, e1.p.webshare.io:01]
                 // userProxy: '', // Proxy login username
                 // userPass: '' // Proxy password
-              },
+            },
             // BrowserInstance
             (browser, waPage) => {
                 console.log('Browser PID:', browser.process().pid);
