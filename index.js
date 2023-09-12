@@ -62,10 +62,10 @@ const getWhatsappSession = (id, socket, reconnect) => {
             // Path download Chrome: /home/site/wwwroot/chrome/chrome-win.zip
             // options
             {
-                browserPathExecutable: '/home/site/wwwroot/.cache/puppeteer/chrome/linux-116.0.5845.96/chrome-linux64/chrome', // browser executable path
+                // browserPathExecutable: puppeteer.executablePath(), // browser executable path
                 // folderNameToken: 'tokens', //folder name when saving tokens
                 // mkdirFolderToken: '', //folder directory tokens, just inside the venom folder, example:  { mkdirFolderToken: '/node_modules', } //will save the tokens folder in the node_modules directory
-                headless: 'new', // you should no longer use boolean false or true, now use false, true or 'new' learn more https://developer.chrome.com/articles/new-headless/
+                // headless: 'new', // you should no longer use boolean false or true, now use false, true or 'new' learn more https://developer.chrome.com/articles/new-headless/
                 // devtools: false, // Open devtools by default
                 // debug: false, // Opens a debug session
                 // logQR: true, // Logs QR automatically in terminal
