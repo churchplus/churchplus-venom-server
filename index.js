@@ -33,7 +33,6 @@ let scheduleMessagePayload = {}
 app.get('/', (req, res) => {
     res.send('<h1>Node application</h1>');
 });
-app.p
 
 
 const getWhatsappSession = (id, socket, reconnect) => {
@@ -58,6 +57,19 @@ const getWhatsappSession = (id, socket, reconnect) => {
                 console.log('Status Session: ', statusSession); //return isLogged || notLogged || browserClose || qrReadSuccess || qrReadFail || autocloseCalled || desconnectedMobile || deleteToken || chatsAvailable || deviceNotConnected || serverWssNotConnected || noOpenBrowser || initBrowser || openBrowser || connectBrowserWs || initWhatsapp || erroPageWhatsapp || successPageWhatsapp || waitForLogin || waitChat || successChat
                 //Create session wss return "serverClose" case server for close
                 console.log('Session name: ', session);
+                if (statusSession.trim().toLowerCase() == 'waitforlogin') {
+                    socket.emit('qrcodeexpired', {
+                        id: session,
+                        message: "QR Code timed out, click the connect button to reconnect."
+                    })
+                }
+                
+                if (statusSession.trim().toLowerCase() == 'erropagewhatsapp') {
+                    socket.emit('whatsapperror', {
+                        id: session,
+                        message: "Authentication failed due to network connectivity, please ensure you have a strong and stable network and try again."
+                    })
+                }
             },
             // Path download Chrome: /home/site/wwwroot/chrome/chrome-win.zip
             // options
@@ -108,10 +120,12 @@ function start(client, id, socket, reconnect) {
     getAllChats(client, socket, id);
 
     if (reconnect == 'reconnect') {
-        console.log('ready and recnnectd');
-        let { Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File } = scheduleMessagePayload[id]
+        console.log('ready and reconnected');
         console.log(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, 'destructured')
-        sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, socket)
+        if (scheduleMessagePayload[id] && scheduleMessagePayload[id].ChatRecipients && scheduleMessagePayload[id].ChatRecipients.length > 0) {
+            let { Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File } = scheduleMessagePayload[id]
+            sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, socket)
+        }
     }
     // client.onMessage((message) => {
     //   if (message.body === 'Hi' && message.isGroupMsg === false) {
@@ -163,6 +177,40 @@ async function sendMessage(chatId, message, whatsappAttachment, client, id, name
         })
     }
 
+}
+
+// ------------------------------------------------------------------------------------------
+// send schedule message
+
+function sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, socket) {
+    if (Base64File) {
+        mediaBase64[SessionId] = Base64File
+    }
+    const client = allSessionObject[SessionId];
+
+    // If sending to phone numbers
+    if (ChatRecipients && ChatRecipients.length > 0) {
+        ChatRecipients.forEach(item => {
+            let number = item.phoneNumber.trim().replaceAll(" ", "") + "@c.us";
+            if (number.substring(0, 1) == '+') {
+                // If the number is frmated : +234xxxxxxxxxxxx
+                const chatId = number.substring(1)
+                sendMessage(chatId, Message, WhatsappAttachment, client, SessionId, item.name, socket)
+            } else {
+                // If the number is formatted: 234xxxxxxxxxxxx
+                const chatId = number
+                sendMessage(chatId, Message, WhatsappAttachment, client, SessionId, item.name, socket)
+            }
+        })
+    }
+
+    // If sending to groups
+    if (GroupRecipients && GroupRecipients.length > 0) {
+        GroupRecipients.forEach(group => {
+            const groupId = group.trim().replaceAll(" ", "") + "@g.us";
+            sendMessage(groupId, Message, WhatsappAttachment, client, SessionId, socket)
+        })
+    }
 }
 
 
@@ -290,7 +338,6 @@ io.on('connection', (socket) => {
 const getAllChats = async (client, socket, id) => {
     try {
         const chats = await client.getAllChatsGroups();
-        console.log(chats, 'chats');
         socket.emit('allchats', {
             id,
             chats,
