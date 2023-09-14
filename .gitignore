@@ -6,4 +6,4 @@ screenshot.png
 *.zip
 .env
 .vscode
-# .cache
+.cache
