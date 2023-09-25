@@ -8,7 +8,7 @@ FROM node:18-slim
 COPY package*.json ./
 
 # Install app dependencies
-RUN yarn install
+RUN yarn install --ignore-engines
 
 
 # Install required dependencies for Puppeteer and Chrome
