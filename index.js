@@ -57,7 +57,7 @@ const getWhatsappSession = (id, socket, reconnect) => {
                 console.log('Status Session: ', statusSession); //return isLogged || notLogged || browserClose || qrReadSuccess || qrReadFail || autocloseCalled || desconnectedMobile || deleteToken || chatsAvailable || deviceNotConnected || serverWssNotConnected || noOpenBrowser || initBrowser || openBrowser || connectBrowserWs || initWhatsapp || erroPageWhatsapp || successPageWhatsapp || waitForLogin || waitChat || successChat
                 //Create session wss return "serverClose" case server for close
                 console.log('Session name: ', session);
-                if (statusSession.trim().toLowerCase() == 'waitforlogin') {
+                if (statusSession.trim().toLowerCase() == 'qrreadfail') {
                     socket.emit('qrcodeexpired', {
                         id: session,
                         message: "QR Code timed out, click the connect button to reconnect."
