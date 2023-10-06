@@ -1,5 +1,5 @@
 # Use the official Node.js image as the base image
-FROM node:18-slim
+FROM node:16-slim
 
 
 
@@ -8,7 +8,7 @@ FROM node:18-slim
 COPY package*.json ./
 
 # Install app dependencies
-RUN yarn install --ignore-engines
+RUN yarn install
 
 
 # Install required dependencies for Puppeteer and Chrome

@@ -56,14 +56,13 @@ const getWhatsappSession = (id, socket, reconnect) => {
             (statusSession, session) => {
                 console.log('Status Session: ', statusSession); //return isLogged || notLogged || browserClose || qrReadSuccess || qrReadFail || autocloseCalled || desconnectedMobile || deleteToken || chatsAvailable || deviceNotConnected || serverWssNotConnected || noOpenBrowser || initBrowser || openBrowser || connectBrowserWs || initWhatsapp || erroPageWhatsapp || successPageWhatsapp || waitForLogin || waitChat || successChat
                 //Create session wss return "serverClose" case server for close
-                console.log('Session name: ', session);
                 if (statusSession.trim().toLowerCase() == 'qrreadfail') {
                     socket.emit('qrcodeexpired', {
                         id: session,
                         message: "QR Code timed out, click the connect button to reconnect."
                     })
                 }
-                
+
                 if (statusSession.trim().toLowerCase() == 'erropagewhatsapp') {
                     socket.emit('whatsapperror', {
                         id: session,
@@ -93,6 +92,7 @@ const getWhatsappSession = (id, socket, reconnect) => {
                 // addProxy: [''], // Add proxy server exemple : [e1.p.webshare.io:01, e1.p.webshare.io:01]
                 // userProxy: '', // Proxy login username
                 // userPass: '' // Proxy password
+                useChrome: false
             },
             // BrowserInstance
             (browser, waPage) => {
@@ -128,7 +128,7 @@ function start(client, id, socket, reconnect) {
         }
     }
     // client.onMessage((message) => {
-    //   if (message.body === 'Hi' && message.isGroupMsg === false) {
+    //   if (message.body === 'Hi' && message.i sGroupMsg === false) {
     // client
     //   .sendText('2349033246067@c.us', 'Welcome Venom 🕷')
     //   .then((result) => {
@@ -147,26 +147,37 @@ async function sendMessage(chatId, message, whatsappAttachment, client, id, name
         if (message.includes("#name#")) {
             message = message.replaceAll("#name#", name ? name : "")
         }
-        if (whatsappAttachment && Object.keys(whatsappAttachment).length > 0 && (whatsappAttachment.MimeType || whatsappAttachment.mimeType)) {
-            // If a file is attached
-            await client.sendImageFromBase64(chatId, mediaBase64[id], (whatsappAttachment.FileName || whatsappAttachment.fileName), message)
-                .then(() => {
-                    console.log('message sent with media')
-                }).catch(err => {
-                    console.log(err.text, chatId, 'err');
-                })
-            // const media = new MessageMedia((whatsappAttachment.MimeType || whatsappAttachment.mimeType), mediaBase64[id], (whatsappAttachment.FileName || whatsappAttachment.fileName));
-            // client.sendText(chatId, media, {
-            //     caption: message
-            // })
-
+        // If a file is attached
+        if (whatsappAttachment.mimeType) {
+            // if image
+            if (whatsappAttachment.mimeType.includes('image')) {
+                await client.sendImageFromBase64(chatId, mediaBase64[id], whatsappAttachment.fileName, message)
+                    .then(() => {
+                        console.log('message sent with image')
+                    }).catch(err => {
+                        console.log(err.text, chatId, 'err');
+                    })
+            } else if (whatsappAttachment.mimeType.includes('audio')) {
+                await client.sendVoiceBase64(chatId, mediaBase64[id])
+                    .then(() => {
+                        console.log('message sent with audio')
+                        if (message) {
+                            messageText(chatId, message, client)
+                        }
+                    }).catch(err => {
+                        console.log(err.text, chatId, 'err');
+                    })
+            } else {
+                await client.sendFileFromBase64(chatId, mediaBase64[id], whatsappAttachment.fileName, message)
+                    .then(() => {
+                        console.log('message sent with file')
+                    }).catch(err => {
+                        console.log(err.text, chatId, 'err');
+                    })
+            }
         } else {
             // If no file is attached
-            await client.sendText(chatId, message).then(() => {
-                console.log('message sent')
-            }).catch(err => {
-                console.log(err.text, chatId, 'err');
-            })
+           messageText(chatId, message, client)
         }
     } else {
         console.log('client is not defined');
@@ -180,9 +191,27 @@ async function sendMessage(chatId, message, whatsappAttachment, client, id, name
 }
 
 // ------------------------------------------------------------------------------------------
+// send text
+
+async function messageText (chatId, message, client) {
+    await client.sendText(chatId, message).then(() => {
+        console.log('message sent')
+    }).catch(err => {
+        console.log(err.text, chatId, 'err');
+    })
+}
+
+
+
+// ------------------------------------------------------------------------------------------
 // send schedule message
 
 function sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, socket) {
+    let whatsappAttachment = {
+        mimeType: WhatsappAttachment.MimeType,
+        fileName: WhatsappAttachment.FileName,
+        fileSize: WhatsappAttachment.FileSize
+    }
     if (Base64File) {
         mediaBase64[SessionId] = Base64File
     }
@@ -195,11 +224,11 @@ function sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipi
             if (number.substring(0, 1) == '+') {
                 // If the number is frmated : +234xxxxxxxxxxxx
                 const chatId = number.substring(1)
-                sendMessage(chatId, Message, WhatsappAttachment, client, SessionId, item.name, socket)
+                sendMessage(chatId, Message, whatsappAttachment, client, SessionId, item.name, socket)
             } else {
                 // If the number is formatted: 234xxxxxxxxxxxx
                 const chatId = number
-                sendMessage(chatId, Message, WhatsappAttachment, client, SessionId, item.name, socket)
+                sendMessage(chatId, Message, whatsappAttachment, client, SessionId, item.name, socket)
             }
         })
     }
@@ -208,7 +237,7 @@ function sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipi
     if (GroupRecipients && GroupRecipients.length > 0) {
         GroupRecipients.forEach(group => {
             const groupId = group.trim().replaceAll(" ", "") + "@g.us";
-            sendMessage(groupId, Message, WhatsappAttachment, client, SessionId, socket)
+            sendMessage(groupId, Message, whatsappAttachment, client, SessionId, socket)
         })
     }
 }
