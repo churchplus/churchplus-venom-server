@@ -27,6 +27,7 @@ let allSessionObject = {};
 let mediaBase64 = {};
 let qrCounter = 0;
 let scheduleMessagePayload = {}
+let sessionStatus = ""
 
 
 
@@ -45,7 +46,7 @@ const getWhatsappSession = (id, socket, reconnect) => {
             (base64Qrimg, asciiQR, attempts, urlCode) => {
                 socket.emit("qr", {
                     qr: urlCode,
-                    message: 'Client got log out, but here is the qr'
+                    message: 'Client qr'
                 })
                 console.log('Number of attempts to read the qrcode: ', attempts);
                 // console.log('Terminal qrcode: ', asciiQR);
@@ -69,6 +70,13 @@ const getWhatsappSession = (id, socket, reconnect) => {
                         message: "Authentication failed due to network connectivity, please ensure you have a strong and stable network and try again."
                     })
                 }
+
+                sessionStatus = statusSession.trim().toLowerCase()
+                if (statusSession.trim().toLowerCase() == 'waitforlogin') {
+                    socket.emit('readytoserve', {
+                        message: 'You can connect now, clicking the connect button below'
+                    })
+                }
             },
             // Path download Chrome: /home/site/wwwroot/chrome/chrome-win.zip
             // options
@@ -86,13 +94,12 @@ const getWhatsappSession = (id, socket, reconnect) => {
                 // puppeteerOptions: { headless: 'new', executablePath: 'usr/bin/google-chrome' }, // Will be passed to puppeteer.launch
                 // disableSpins: true, // Will disable Spinnies animation, useful for containers (docker) for a better log
                 // disableWelcome: true, // Will disable the welcoming message which appears in the beginning
-                // updatesLog: true, // Logs info updates automatically in terminal
-                // autoClose: 60000, // Automatically closes the venom-bot only when scanning the QR code (default 60 seconds, if you want to turn it off, assign 0 or false)
+                updatesLog: false, // Logs info updates automatically in terminal
+                autoClose: 120000, // Automatically closes the venom-bot only when scanning the QR code (default 60 seconds, if you want to turn it off, assign 0 or false)
                 // createPathFileToken: false, // creates a folder when inserting an object in the client's browser, to work it is necessary to pass the parameters in the function create browserSessionToken
                 // addProxy: [''], // Add proxy server exemple : [e1.p.webshare.io:01, e1.p.webshare.io:01]
                 // userProxy: '', // Proxy login username
                 // userPass: '' // Proxy password
-                useChrome: false
             },
             // BrowserInstance
             (browser, waPage) => {
@@ -177,7 +184,7 @@ async function sendMessage(chatId, message, whatsappAttachment, client, id, name
             }
         } else {
             // If no file is attached
-           messageText(chatId, message, client)
+            messageText(chatId, message, client)
         }
     } else {
         console.log('client is not defined');
@@ -193,7 +200,7 @@ async function sendMessage(chatId, message, whatsappAttachment, client, id, name
 // ------------------------------------------------------------------------------------------
 // send text
 
-async function messageText (chatId, message, client) {
+async function messageText(chatId, message, client) {
     await client.sendText(chatId, message).then(() => {
         console.log('message sent')
     }).catch(err => {
@@ -285,7 +292,21 @@ io.on('connection', (socket) => {
         const {
             id
         } = data
-        getWhatsappSession(id, socket, '')
+        console.log(sessionStatus);
+        if (sessionStatus) {
+            if (sessionStatus == 'waitforlogin' || sessionStatus == 'successchat' || sessionStatus == 'erropagewhatsapp' || sessionStatus == 'islogged' || sessionStatus == 'notlogged') {
+                console.log('ready to serve login request');
+                sessionStatus = ""
+                getWhatsappSession(id, socket, '')
+            } else {
+                console.log('Processing for a client');
+                socket.emit('processing', {
+                    message: "Currently authenticating a user, please wait ..."
+                })
+            }
+        } else {
+            getWhatsappSession(id, socket, '')
+        }
     })
 
 
@@ -302,22 +323,10 @@ io.on('connection', (socket) => {
         console.log(phone_number, 'PHONENUMBER')
         console.log(whatsappAttachment, 'WhatsappAttachment')
         // getChatById(client, phone_number)
-        phone_number.forEach(item => {
-            let number = item.phoneNumber.trim().replaceAll(" ", "") + "@c.us";
-            if (number.substring(0, 1) == '+') {
-                // If the number is frmated : +234xxxxxxxxxxxx
-                const chatId = number.substring(1)
-                sendMessage(chatId, message, whatsappAttachment, client, id, item.name, socket)
-            } else {
-                // If the number is formatted: 234xxxxxxxxxxxx
-                const chatId = number
-                sendMessage(chatId, message, whatsappAttachment, client, id, item.name, socket)
-            }
-        })
-        socket.emit('messagesent', {
-            status: 200,
-            message: 'Message sent successfully',
-        })
+
+        throttleMessages(phone_number, message, whatsappAttachment, id, client, socket)
+
+
     })
 
     socket.on('sendtogroups', ({
@@ -357,7 +366,42 @@ io.on('connection', (socket) => {
 });
 
 
-
+const throttleMessages = (phone_number, message, whatsappAttachment, id, client, socket) => {
+    let full_phone_number = phone_number
+    let sliced_phone_number = []
+    if (full_phone_number.length > 10) {
+        sliced_phone_number = full_phone_number.slice(0, 10)
+        full_phone_number.splice(0, 10)
+    } else {
+        sliced_phone_number = full_phone_number
+        full_phone_number = []
+    }
+    sliced_phone_number.forEach((item, index) => {
+        let number = item.phoneNumber.trim().replaceAll(" ", "") + "@c.us";
+        if (number.substring(0, 1) == '+') {
+            // If the number is frmated : +234xxxxxxxxxxxx
+            const chatId = number.substring(1)
+            sendMessage(chatId, message, whatsappAttachment, client, id, item.name, socket)
+        } else {
+            // If the number is formatted: 234xxxxxxxxxxxx
+            const chatId = number
+            sendMessage(chatId, message, whatsappAttachment, client, id, item.name, socket)
+        }
+        if (index == sliced_phone_number.length - 1) {
+            setTimeout(() => {
+                if (full_phone_number.length > 0) {
+                    throttleMessages(full_phone_number, message, whatsappAttachment, id, client, socket)
+                } else {
+                    console.log('All messages sent');
+                }
+            }, 10000);
+        }
+    })
+    socket.emit('messagesent', {
+        status: 200,
+        message: 'Message sent successfully',
+    })
+}
 
 // ============================================================================================
 //   CUSTOM FUNCTIONS AND WHATSAPP API METHODS CALL
