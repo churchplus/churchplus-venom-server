@@ -294,7 +294,7 @@ io.on('connection', (socket) => {
         } = data
         console.log(sessionStatus);
         if (sessionStatus) {
-            if (sessionStatus == 'waitforlogin' || sessionStatus == 'successchat' || sessionStatus == 'erropagewhatsapp' || sessionStatus == 'islogged') {
+            if (sessionStatus == 'waitforlogin' || sessionStatus == 'successchat' || sessionStatus == 'erropagewhatsapp' || sessionStatus == 'islogged' || sessionStatus == 'noopenbrowser') {
                 console.log('ready to serve login request');
                 sessionStatus = ""
                 getWhatsappSession(id, socket, '')
