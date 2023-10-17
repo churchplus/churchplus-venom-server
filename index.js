@@ -108,7 +108,19 @@ const getWhatsappSession = (id, socket, reconnect) => {
             }
         )
         .then((client) => {
-            start(client, id, socket, reconnect);
+            // Catch ctrl+C
+            process.on('SIGINT', function() {
+                console.log('client closed');
+                client.close();
+            });
+            
+            // Try-catch close
+            try {
+                start(client, id, socket, reconnect);
+            } catch (error) {
+                console.log(error, 'error with client, closing client');
+                client.close();
+            }
         })
         .catch((erro) => {
             console.log(erro);
@@ -350,6 +362,7 @@ io.on('connection', (socket) => {
         // socket.emit('schedulepayload', { Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File })
         sendScheduledMessage(Message, WhatsappAttachment, SessionId, ChatRecipients, GroupRecipients, Base64File, socket)
     })
+    
 
     // socket.on('deleteremotesession' , async({ session }) => {
     //     console.log(store, session);
